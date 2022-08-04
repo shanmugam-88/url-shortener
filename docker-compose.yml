@@ -1,0 +1,78 @@
+version: '3.7'
+services:
+  url-shortener:
+    #image:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    restart: on-failure
+    env_file: ./.env
+    depends_on:
+      - mysql
+    environment:
+      RDS_HOSTNAME: mysql
+      RDS_PORT: 3306
+      RDS_DB_NAME: "${MYSQL_DB_DATABASE}"
+      RDS_USERNAME: "${MYSQL_DB_USER}"
+      RDS_PASSWORD: "${MYSQL_DB_PASSWORD}"
+    networks:
+      - url-shortener-network
+
+  mysql:
+    image: mysql:5.7
+    ports:
+      - "3306:3306"
+    restart: unless-stopped
+    env_file: ./.env
+    environment:
+      MYSQL_ROOT_PASSWORD: "${MYSQL_DB_ROOT_PASSWORD}"
+      MYSQL_USER: "${MYSQL_DB_USER}"
+      MYSQL_PASSWORD: "${MYSQL_DB_PASSWORD}"
+      MYSQL_DATABASE: "${MYSQL_DB_DATABASE}"
+    volumes:
+      - mysql-database-data-volume:/var/lib/mysql
+    networks:
+      - url-shortener-network
+
+  prometheus:
+    image: prom/prometheus:v2.35.0
+    container_name: prometheus
+    restart: unless-stopped
+    depends_on:
+      - url-shortener
+    volumes:
+      - ./data/prometheus/config:/etc/prometheus/
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yaml"
+    ports:
+      - 9090:9090
+    networks:
+      - url-shortener-network
+
+  grafana:
+    image: grafana/grafana-oss:8.5.2
+    pull_policy: always
+    container_name: grafana
+    restart: unless-stopped
+    user: root
+    ports:
+      - 3000:3000
+    links:
+      - prometheus:prometheus
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_DOMAIN=localhost
+      - GF_LOG_MODE=console file
+      - GF_LOG_FILTERS=alerting.notifier.slack:debug alertmanager:debug ngalert:debug
+    networks:
+      - url-shortener-network
+
+# Volumes
+volumes:
+  mysql-database-data-volume:
+
+networks:
+  url-shortener-network:
