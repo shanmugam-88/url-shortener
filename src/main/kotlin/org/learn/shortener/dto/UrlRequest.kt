@@ -8,5 +8,5 @@ import io.swagger.annotations.ApiOperation
 @ApiOperation(value = "URL shortener request object")
 @ApiModel
 data class UrlRequest(
-    @ApiModelProperty(required = true, notes = "Url to be shortened.", example = "https://www.dkbcodefactory.com")
+    @ApiModelProperty(required = true, notes = "Url to be shortened.", example = "https://www.factory.com")
     @JsonProperty("url") var url: String)
